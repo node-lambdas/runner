@@ -84,7 +84,7 @@ async function npmInstall() {
   Console.info(`Installing dependencies at ${rootFolder}`);
   process.chdir(rootFolder);
 
-  const npmi = await exec('npm', ['i', '--no-audit', '--no-fund']);
+  const npmi = await exec('npm', ['i', '--no-audit', '--no-fund'], { cwd: rootFolder });
   if (!npmi.ok) {
     Console.error(npmi.stderr);
     throw new Error(`Failed to install dependencies`);
@@ -99,15 +99,7 @@ async function startServer() {
   const { server } = lambda(configurations);
 
   Console.info(`[${new Date().toISOString().slice(0, 16)}] started`);
-
-  server.on('close', () => {
-    Console.error('Server failed, restarting');
-    if (errorBudget--) {
-      return startServer();
-    }
-
-    Console.error('Too many failures');
-  });
+  server.on('close', () => process.exit(1));
 }
 
 async function download(url: string) {
