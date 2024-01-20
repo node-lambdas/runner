@@ -4,7 +4,6 @@ import { existsSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-let errorBudget = Number(process.env.MAX_RESTART || 5);
 const workingDir = process.env.WORKING_DIR || '/home/fn';
 
 const repoUrl = (repo: string) => {
