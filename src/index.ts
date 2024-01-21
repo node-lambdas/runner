@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const workingDir = process.env.WORKING_DIR || '/home/fn';
+const workingDir = process.env.WORKING_DIR;
 
 const repoUrl = (repo: string) => {
   const [owner, ref = 'main'] = repo.split(':');
@@ -14,8 +14,11 @@ const repoUrl = (repo: string) => {
 async function main() {
   try {
     const source = getSource();
-    const filePath = await download(source);
-    await extractFile(filePath);
+    if (source) {
+      const filePath = await download(source);
+      await extractFile(filePath);
+    }
+
     await npmInstall();
     await startServer();
   } catch (error) {
@@ -30,10 +33,8 @@ function getSource() {
   const sourceUrl = process.env.SOURCE_URL;
   const source = !sourceUrl && sourceRepo ? repoUrl(sourceRepo) : sourceUrl;
 
-  Console.info('Using source at ' + source);
-
-  if (!source) {
-    throw new Error('Missing source to run. Set REPOSITORY or SOURCE_URL');
+  if (source) {
+    Console.info('Using source at ' + source);
   }
 
   return source;
