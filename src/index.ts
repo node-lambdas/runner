@@ -14,6 +14,7 @@ const repoUrl = (repo: string) => {
 async function main() {
   try {
     const source = getSource();
+
     if (source) {
       const filePath = await download(source);
       await extractFile(filePath);
