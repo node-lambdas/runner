@@ -1,7 +1,7 @@
 src/
 dist/
-.github/
 node_modules/
+.github/
 jest*
 rollup*
 tsconfig.json

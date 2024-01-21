@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { spawn } from 'child_process';
 import require$$0 from 'buffer';
 import { createServer } from 'node:http';
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -353,7 +353,7 @@ function simpleEnd(buf) {
 
 class Process extends EventEmitter {
     get hasError() {
-        return Boolean(this._errorBuffer.length || this.code !== 0 || this.error);
+        return Boolean((this._errorBuffer.length && this.code !== 0) || this.code !== 0 || this.error);
     }
     constructor(childProcess) {
         super();
@@ -805,41 +805,50 @@ function lambda(configuration) {
     }
 }
 
-let errorBudget = Number(process.env.MAX_RESTART || 5);
-const filePath = '/tmp/fn.zip';
-const workingDir = process.env.WORKING_DIR || '/home/app';
+const workingDir = process.env.WORKING_DIR;
 const repoUrl = (repo) => {
     const [owner, ref = 'main'] = repo.split(':');
     return `https://codeload.github.com/${owner}/zip/refs/heads/${ref}`;
 };
 async function main() {
-    const sourceRepo = process.env.REPOSITORY;
-    const sourceUrl = process.env.SOURCE_URL;
-    const source = !sourceUrl && sourceRepo ? repoUrl(sourceRepo) : sourceUrl;
-    Console.info('Using source at ' + source);
-    if (!source) {
-        throw new Error('Missing source to run');
-    }
     try {
-        await download(source);
-        await extractFile();
+        const source = getSource();
+        if (source) {
+            const filePath = await download(source);
+            await extractFile(filePath);
+        }
         await npmInstall();
         await startServer();
     }
     catch (error) {
-        Console.error(`Failed to run from source: ${source}`);
+        Console.error(`Failed to run`);
         Console.error(String(error));
-        Console.debug(error);
+        Console.debug(error.stack);
     }
 }
-async function extractFile() {
+function getSource() {
+    const sourceRepo = process.env.REPOSITORY;
+    const sourceUrl = process.env.SOURCE_URL;
+    const source = !sourceUrl && sourceRepo ? repoUrl(sourceRepo) : sourceUrl;
+    if (source) {
+        Console.info('Using source at ' + source);
+    }
+    return source;
+}
+async function extractFile(filePath) {
     switch (true) {
         case filePath.endsWith('.tgz'):
             const tar = await exec('tar', ['xzf', workingDir, filePath]);
-            return tar.ok;
+            if (!tar.ok) {
+                throw new Error('Unable to extract file: ' + tar.stderr);
+            }
+            break;
         case filePath.endsWith('.zip'):
             const zip = await exec('unzip', ['-o', '-d', workingDir, filePath]);
-            return zip.ok;
+            if (!zip.ok) {
+                throw new Error('Unable to extract file: ' + zip.stderr);
+            }
+            break;
         default:
             throw new Error(`Unsupported file format at ${filePath}`);
     }
@@ -849,31 +858,29 @@ async function npmInstall() {
     if (existsSync(join(workingDir, 'package.json'))) {
         rootFolder = workingDir;
     }
-    const subFolder = (await readdir(workingDir))[0];
-    if (existsSync(join(workingDir, subFolder, 'package.json'))) {
+    const subFolder = (await readdir(workingDir))[0] || '';
+    if (subFolder && existsSync(join(workingDir, subFolder, 'package.json'))) {
         rootFolder = join(workingDir, subFolder);
     }
-    Console.info('Installing dependencies at ' + rootFolder.replace(process.cwd(), ''));
+    if (!rootFolder) {
+        throw new Error(`Unable to find package.json at ${workingDir}`);
+    }
+    Console.info(`Installing dependencies at ${rootFolder}`);
     process.chdir(rootFolder);
-    const npmi = await exec('npm', ['i', '--no-audit', '--no-fund']);
+    const npmi = await exec('npm', ['i', '--no-audit', '--no-fund'], { cwd: rootFolder });
     if (!npmi.ok) {
+        Console.log(npmi.stdout);
         Console.error(npmi.stderr);
         throw new Error(`Failed to install dependencies`);
     }
     Console.log(npmi.stdout);
 }
 async function startServer() {
-    Console.info(`[${new Date().toISOString().slice(0, 16)}] starting`);
-    const fn = await import(join(process.cwd(), './index.js'));
+    const fn = await import(join(process.cwd(), 'index.js'));
     const configurations = fn['default'] || fn;
     const { server } = lambda(configurations);
-    server.on('close', () => {
-        Console.error('Server failed, restarting');
-        if (errorBudget--) {
-            return startServer();
-        }
-        Console.error('Too many failures');
-    });
+    Console.info(`[${new Date().toISOString().slice(0, 16)}] started`);
+    server.on('close', () => process.exit(1));
 }
 async function download(url) {
     let extension = '';
@@ -886,18 +893,16 @@ async function download(url) {
     if (!extension) {
         throw new Error(`Unsupported format at ${url}`);
     }
-    const filePath = join('/tmp', createHash('sha256').update(url).digest('hex') + extension);
-    if (existsSync(filePath)) {
+    const filePath = '/tmp/fn' + extension;
+    if (existsSync(filePath) && process.env.USE_CACHED) {
         return filePath;
     }
-    try {
-        const response = await fetch(url);
-        const file = Buffer.from(await response.arrayBuffer());
-        await writeFile(filePath, file);
-        return filePath;
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Failed to download ${url}: ${await response.text()}`);
     }
-    catch (error) {
-        throw new Error(`Failed to download ${url}: ${String(error)}`);
-    }
+    const file = Buffer.from(await response.arrayBuffer());
+    await writeFile(filePath, file);
+    return filePath;
 }
 main();
