@@ -97,11 +97,17 @@ async function npmInstall() {
 }
 
 async function startServer() {
-  const fn = await import(join(process.cwd(), 'index.js'));
+  const path = ['index.mjs', 'index.js'].map((p) => join(process.cwd(), p)).find((p) => existsSync(p));
+
+  if (!path) {
+    throw new Error('Cannot run lambda: entrypoint not found.');
+  }
+
+  const fn = await import(path);
   const configurations = fn['default'] || fn;
   const { server } = lambda(configurations);
 
-  Console.info(`[${new Date().toISOString().slice(0, 16)}] started`);
+  Console.info(`[${new Date().toISOString().slice(0, 16)}] started from ${path}`);
   server.on('close', () => process.exit(1));
 }
 
