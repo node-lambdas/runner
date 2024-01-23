@@ -138,10 +138,7 @@ async function startServer() {
   // bypass code compression rewrite of import() call
   const i = Function('p', 'return import(p)');
   const fn = await i(fnPath);
-
   const configurations = fn['default'] || fn;
-  Console.debug(JSON.stringify(configurations));
-
   const { server } = lambda(configurations);
 
   Console.info(`[${new Date().toISOString().slice(0, 16)}] started from ${fnPath}`);
