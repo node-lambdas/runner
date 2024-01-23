@@ -23,8 +23,7 @@ async function main() {
     await npmInstall();
     await startServer();
   } catch (error) {
-    Console.error(`Failed to run`);
-    Console.error(String(error));
+    Console.error(`Failed to run: ${String(error)}`);
     Console.debug(error.stack);
   }
 }
@@ -103,6 +102,7 @@ async function startServer() {
     throw new Error('Cannot run lambda: entrypoint not found.');
   }
 
+  Console.log(`Loading ${path}`);
   const fn = await import(path);
   const configurations = fn['default'] || fn;
   const { server } = lambda(configurations);
