@@ -134,14 +134,10 @@ async function startServer() {
   }
 
   Console.log(`Loading ${fnPath}`);
-  let fn;
 
-  try {
-    fn = await import(fnPath);
-  } catch (failed) {
-    Console.log(String(failed));
-    throw failed;
-  }
+  // bypass code compression rewrite of import() call
+  const i = Function('p', 'return import(p)');
+  const fn = await i(fnPath);
 
   const configurations = fn['default'] || fn;
   Console.debug(JSON.stringify(configurations));
