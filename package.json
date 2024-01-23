@@ -2,13 +2,13 @@
   "name": "@node-lambdas/runner",
   "private": true,
   "version": "0.0.0",
-  "main": "./index.js",
+  "main": "./dist/index.js",
   "type": "module",
   "scripts": {
     "ci": "npm i && npm run bundle",
     "rollup": "npx rollup -c rollup.config.mjs",
     "build": "tsc",
-    "bundle": "npx @vercel/ncc build -m -o index.js --no-cache -t es2023 src/index.ts",
+    "bundle": "npx @vercel/ncc build src/index.ts --minify --target es2023",
     "test": "echo ok"
   },
   "prettier": "@cloud-cli/prettier-config",

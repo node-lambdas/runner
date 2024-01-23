@@ -1,7 +1,5 @@
 src/
-dist/
 node_modules/
 .github/
 jest*
-rollup*
 tsconfig.json

@@ -1,5 +1,5 @@
 FROM ghcr.io/cloud-cli/node:latest
-COPY --chown=node:node . /home/app
+COPY --chown=node:node dist /home/app
 USER node
 RUN mkdir /home/fn
 ENV PORT=3000
