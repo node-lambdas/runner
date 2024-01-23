@@ -87,7 +87,7 @@ async function npmInstall() {
 
   const npmi = await exec('npm', ['i', '--no-audit', '--no-fund'], { cwd: rootFolder });
 
-  if (!npmi.ok) {
+  if (npmi.code !== 0) {
     Console.log(npmi.stdout);
     Console.error(npmi.stderr);
     throw new Error(`Failed to install dependencies`);
