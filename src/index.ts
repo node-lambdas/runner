@@ -78,11 +78,13 @@ async function npmInstall() {
   }
 
   if (!rootFolder) {
-    throw new Error(`Unable to find package.json at ${workingDir}`);
+    Console.info(`Unable to find package.json at ${workingDir}`);
+    process.chdir(workingDir);
+    return;
   }
 
-  Console.info(`Installing dependencies at ${rootFolder}`);
   process.chdir(rootFolder);
+  Console.info(`Installing dependencies at ${rootFolder}`);
 
   const npmi = await exec('npm', ['i', '--no-audit', '--no-fund'], { cwd: rootFolder });
 
