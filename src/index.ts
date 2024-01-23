@@ -95,22 +95,6 @@ async function npmInstall() {
   Console.log(npmi.stdout);
 }
 
-async function startServer() {
-  const path = ['index.mjs', 'index.js'].map((p) => join(process.cwd(), p)).find((p) => existsSync(p));
-
-  if (!path) {
-    throw new Error('Cannot run lambda: entrypoint not found.');
-  }
-
-  Console.log(`Loading ${path}`);
-  const fn = await import(path);
-  const configurations = fn['default'] || fn;
-  const { server } = lambda(configurations);
-
-  Console.info(`[${new Date().toISOString().slice(0, 16)}] started from ${path}`);
-  server.on('close', () => process.exit(1));
-}
-
 async function download(url: string) {
   let extension = '';
 
@@ -140,6 +124,32 @@ async function download(url: string) {
   await writeFile(filePath, file);
 
   return filePath;
+}
+
+async function startServer() {
+  const fnPath = ['index.mjs', 'index.js'].map((p) => join(process.cwd(), p)).find((p) => existsSync(p));
+
+  if (!fnPath) {
+    throw new Error('Cannot run lambda: entrypoint not found.');
+  }
+
+  Console.log(`Loading ${fnPath}`);
+  let fn;
+
+  try {
+    fn = await import(fnPath);
+  } catch (failed) {
+    Console.log(String(failed));
+    throw failed;
+  }
+
+  const configurations = fn['default'] || fn;
+  Console.debug(JSON.stringify(configurations));
+
+  const { server } = lambda(configurations);
+
+  Console.info(`[${new Date().toISOString().slice(0, 16)}] started from ${fnPath}`);
+  server.on('close', () => process.exit(1));
 }
 
 main();
