@@ -27,6 +27,6 @@
   },
   "dependencies": {
     "@cloud-cli/exec": "^1.2.0",
-    "@node-lambdas/core": "^1.15.4"
+    "@node-lambdas/core": "^2.0.1"
   }
 }
